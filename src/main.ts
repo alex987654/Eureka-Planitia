@@ -1,73 +1,66 @@
-import { loadMeta, formatDate, type Meta } from "./lib/meta";
+import "cesium/Build/Cesium/Widgets/widgets.css";
+import "./style.css";
+import * as Cesium from "cesium";
+import { createViewer, MARS } from "./globe/mars";
+import { createFeatureLayer } from "./globe/features";
+import { createList } from "./explore/list";
+import { renderRecord, clearRecord } from "./explore/record";
+import { loadFeatures } from "./data/load";
+import { loadMeta, formatDate } from "./lib/meta";
 
-const app = document.getElementById("app")!;
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const PHASES: ReadonlyArray<{ n: string; title: string; body: string; done?: boolean }> = [
-  { n: "0", title: "Data spine", body: "Self-refreshing catalogue from the USGS Gazetteer, with the last sync shown here.", done: true },
-  { n: "1", title: "Explore", body: "A CesiumJS Mars globe with colorized-MOLA imagery; features revealed biggest-first, each with its full record." },
-  { n: "2", title: "Study", body: "Flashcards with SM-2 spaced repetition: identify a feature, or recall where it sits." },
-  { n: "3", title: "Recall & export", body: "Pick the closest pair among three; finish a session and export your score as a PDF." },
-];
+async function boot(): Promise<void> {
+  const globeEl = $("globe");
+  const recordEl = $("record");
+  const filtersEl = $("filters");
+  const listEl = $("list");
+  const syncEl = $("sync");
+  const searchEl = $<HTMLInputElement>("search");
 
-function readout(meta: Meta): string {
-  const synced = formatDate(meta.last_checked);
-  const seed = meta.is_seed
-    ? `<span class="tag">seed sample</span>`
-    : `<span class="tag tag--live"><span class="pulse" aria-hidden="true"></span>live</span>`;
-  return `
-    <dl class="readout" aria-label="Catalogue status">
-      <div><dt>Catalogue</dt><dd>${meta.feature_count.toLocaleString()} features ${seed}</dd></div>
-      <div><dt>Synced from USGS</dt><dd>${synced}</dd></div>
-      <div><dt>Coordinates</dt><dd>${meta.coordinate_system} · 0–360</dd></div>
-    </dl>`;
+  const [features, meta] = await Promise.all([loadFeatures(), loadMeta().catch(() => null)]);
+
+  if (meta) {
+    syncEl.textContent =
+      `Synced ${formatDate(meta.last_checked)} · ${meta.feature_count.toLocaleString()} features` +
+      (meta.is_seed ? " (seed)" : "");
+  }
+
+  const viewer = createViewer(globeEl);
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(-70, 0, 1.5e7, MARS), // Valles Marineris hemisphere
+  });
+
+  const list = createList(filtersEl, listEl, features, {
+    onPick: (id) => layer.select(id, { fly: true }),
+  });
+
+  const layer = createFeatureLayer(viewer, features, (f) => {
+    if (f) {
+      renderRecord(recordEl, f, (id) => layer.flyTo(id));
+      list.highlight(f.id);
+    } else {
+      clearRecord(recordEl);
+      list.highlight(null);
+    }
+  });
+
+  recordEl.addEventListener("click", (e) => {
+    if ((e.target as HTMLElement).closest("[data-close]")) layer.select(null);
+  });
+
+  searchEl.addEventListener("input", () => list.setQuery(searchEl.value));
+
+  $("toggle-list").addEventListener("click", () =>
+    document.getElementById("app")!.classList.toggle("list-open"),
+  );
+
+  viewer.scene.requestRender();
 }
 
-function render(meta: Meta): void {
-  app.setAttribute("aria-busy", "false");
-  app.innerHTML = `
-    <header class="masthead">
-      <p class="eyebrow">Gazetteer of Planetary Nomenclature</p>
-      <h1>Mars<span class="middot">·</span>Named&nbsp;Features</h1>
-      <p class="lede">A study atlas of every officially named place on Mars — its name,
-        what kind of feature it is, and where it sits on the globe. Built for the
-        curious adult who wants the real catalogue, not a flyover.</p>
-      <div class="rule" aria-hidden="true"></div>
-    </header>
-
-    <section class="status">${readout(meta)}</section>
-
-    <section class="roadmap" aria-label="Build roadmap">
-      <h2>What's coming</h2>
-      <ol class="phases">
-        ${PHASES.map(
-          (p) => `
-          <li class="phase ${p.done ? "is-done" : ""}">
-            <span class="phase__n">${p.n}</span>
-            <div>
-              <h3>${p.title}${p.done ? ' <span class="check" aria-label="shipping">— now</span>' : ""}</h3>
-              <p>${p.body}</p>
-            </div>
-          </li>`
-        ).join("")}
-      </ol>
-    </section>
-
-    <footer class="colophon">
-      Feature names and coordinates from the
-      <a href="${meta.source_url}" rel="noopener">IAU / USGS ${meta.source.replace("IAU/USGS ", "")}</a>.
-      ${meta.note ? `<br /><span class="note">${meta.note}.</span>` : ""}
-    </footer>`;
-}
-
-function renderError(): void {
-  app.setAttribute("aria-busy", "false");
-  app.innerHTML = `
-    <section class="status status--error" role="alert">
-      <h2>Catalogue didn't load</h2>
-      <p>The feature data at <code>data/meta.json</code> couldn't be read. If you're
-        running locally, start the dev server with <code>npm run dev</code>. On a
-        deployed site, check that the latest workflow run finished.</p>
-    </section>`;
-}
-
-loadMeta().then(render).catch(renderError);
+boot().catch((err) => {
+  console.error(err);
+  $("globe").innerHTML =
+    `<div class="globe-error" role="alert"><h2>Couldn't start the globe</h2>` +
+    `<p>${String(err)}. If running locally, start with <code>npm run dev</code>.</p></div>`;
+});
