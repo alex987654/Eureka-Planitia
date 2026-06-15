@@ -54,7 +54,7 @@ export function createViewer(container: HTMLElement): Cesium.Viewer {
   const scene = viewer.scene;
   // Mars, not Earth: no blue atmosphere; uniform lighting so no feature hides in
   // a dark night side; a tan base color while tiles stream in.
-  scene.skyAtmosphere.show = false;
+  if (scene.skyAtmosphere) scene.skyAtmosphere.show = false;
   scene.globe.showGroundAtmosphere = false;
   scene.globe.enableLighting = false;
   scene.globe.baseColor = Cesium.Color.fromCssColorString("#3a2a20");
