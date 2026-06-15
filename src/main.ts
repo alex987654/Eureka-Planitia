@@ -1,4 +1,3 @@
-import "./style.css";
 import { loadMeta, formatDate, type Meta } from "./lib/meta";
 
 const app = document.getElementById("app")!;
