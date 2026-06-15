@@ -1,7 +1,10 @@
 # Learn about Mars · Eureka Planitia
 
-A study atlas of every officially named surface feature on Mars — its IAU name,
-descriptor class, and location — for the scientifically curious adult. Built with a CesiumJS 3D globe (colorized-MOLA imagery) and an SM-2 flashcard study layer. 
+An educational study atlas of every officially named surface feature on Mars — its IAU name,
+descriptor class, and location — for anyone who wants to learn about named features on Mars. Built with a CesiumJS 3D globe (colorized-MOLA imagery) and (soon) an SM-2 flashcard study layer. 
+
+Web page: 
+* [Eureka Planitia](https://alex987654.github.io/Eureka-Planitia)
 
 ## Source & attribution
 
