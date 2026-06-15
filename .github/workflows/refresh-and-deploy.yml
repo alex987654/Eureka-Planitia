@@ -1,0 +1,62 @@
+name: Refresh data and deploy
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"      # every Monday 07:00 UTC
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Pull the current catalogue from the USGS Gazetteer into public/data.
+      # If the gazetteer is unreachable or returns too little, the script exits
+      # non-zero and we keep the committed snapshot already in public/data.
+      - name: Refresh feature data
+        run: |
+          python scripts/fetch_mars_features.py --out public/data \
+            || echo "::warning::Gazetteer refresh failed; using committed snapshot."
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build site
+        env:
+          # Project Pages serve from /<repo>/ — set the Vite base accordingly.
+          VITE_BASE: "/${{ github.event.repository.name }}/"
+        run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
