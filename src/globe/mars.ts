@@ -11,9 +11,10 @@ export const MARS: Cesium.Ellipsoid =
   new Cesium.Ellipsoid(MARS_MEAN_RADIUS_M, MARS_MEAN_RADIUS_M, MARS_MEAN_RADIUS_M);
 
 // NASA Mars Trek — colorized MOLA shaded relief (global 463 m), RESTful WMTS.
+// Trek serves these tiles as JPEG (the .png endpoint 404s), so request image/jpeg.
 const TREK_MOLA =
   "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m" +
-  "/1.0.0/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.png";
+  "/1.0.0/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.jpg";
 
 export function createViewer(container: HTMLElement): Cesium.Viewer {
   // Make every Cesium default use the Mars sphere (must precede Viewer creation).
@@ -46,7 +47,7 @@ export function createViewer(container: HTMLElement): Cesium.Viewer {
       // Global equirectangular set: 2 tiles wide x 1 tall at level 0 (Cesium default).
       tilingScheme: new Cesium.GeographicTilingScheme({ ellipsoid: MARS }),
       maximumLevel: 7,
-      format: "image/png",
+      format: "image/jpeg",
       credit: new Cesium.Credit("Imagery: NASA/USGS Mars Trek (MOLA colorized hillshade)"),
     }),
   );
