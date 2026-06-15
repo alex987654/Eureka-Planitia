@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Learn the official IAU/USGS names, types and locations of Mars surface features."
+      content="Learn the official IAU/USGS names, types and locations of Mars surface features on a 3D globe."
     />
     <title>Mars · Named Features</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -16,9 +16,22 @@
     />
   </head>
   <body>
-    <main id="app" aria-busy="true">
-      <p class="loading">Loading catalogue…</p>
-    </main>
+    <div id="app">
+      <header id="topbar">
+        <button id="toggle-list" class="icon-btn" aria-label="Toggle feature list">☰</button>
+        <div class="brand"><span class="brand__mark" aria-hidden="true"></span> Mars<span class="brand__mid">·</span>Named Features</div>
+        <input id="search" type="search" placeholder="Search features…" aria-label="Search features" />
+        <div id="sync" class="sync" aria-live="polite"></div>
+      </header>
+      <div id="stage">
+        <aside id="catalogue" aria-label="Feature catalogue">
+          <div id="filters"></div>
+          <div id="list" role="listbox" tabindex="0" aria-label="Features"></div>
+        </aside>
+        <main id="globe" aria-label="Mars globe"></main>
+        <aside id="record" hidden aria-label="Feature details"></aside>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
