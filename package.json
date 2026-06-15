@@ -1,0 +1,17 @@
+{
+  "name": "mars-features-atlas",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Learn the official IAU/USGS names, types and locations of Mars surface features.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "refresh": "python3 scripts/fetch_mars_features.py --out public/data"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.4.8"
+  }
+}
