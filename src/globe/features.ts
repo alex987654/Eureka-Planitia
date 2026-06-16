@@ -28,6 +28,12 @@ function pixelForDiameter(d: number | null): number {
 export interface FeatureLayer {
   select(id: number | null, opts?: { fly?: boolean }): void;
   flyTo(id: number): void;
+  /** Study mode: hide every name label (points still show) so a "what is this?"
+   * card can't be spoiled. Honors revealLabel(). */
+  setLabelsHidden(hidden: boolean): void;
+  /** Force one feature's name label visible (the flashcard flip); null hides all
+   * again while labels are suppressed. */
+  revealLabel(id: number | null): void;
 }
 
 export function createFeatureLayer(
@@ -72,6 +78,16 @@ export function createFeatureLayer(
   viewer.dataSources.add(ds);
 
   let current: Cesium.Entity | null = null;
+  let labelsHidden = false;
+  let revealedId: number | null = null;
+
+  // Label visibility for study mode. `label.show` overrides distance/selection
+  // styling, so a selected (highlighted) target can stay nameless until revealed.
+  function applyLabelVisibility(e: Cesium.Entity): void {
+    if (!e.label) return;
+    const x = (e as unknown as { _x: EntityExtra })._x;
+    e.label.show = new Cesium.ConstantProperty(!labelsHidden || x.feature.id === revealedId);
+  }
 
   function style(e: Cesium.Entity | null, selected: boolean): void {
     if (!e || !e.point || !e.label) return;
@@ -117,11 +133,25 @@ export function createFeatureLayer(
     select(f ? f.feature.id : null);
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
+  function setLabelsHidden(hidden: boolean): void {
+    labelsHidden = hidden;
+    for (const e of ds.entities.values) applyLabelVisibility(e);
+    viewer.scene.requestRender();
+  }
+
+  function revealLabel(id: number | null): void {
+    revealedId = id;
+    for (const e of ds.entities.values) applyLabelVisibility(e);
+    viewer.scene.requestRender();
+  }
+
   return {
     select,
     flyTo: (id: number) => {
       const e = byId.get(id);
       if (e) flyToEntity(e);
     },
+    setLabelsHidden,
+    revealLabel,
   };
 }

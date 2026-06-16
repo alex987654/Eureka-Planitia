@@ -170,8 +170,9 @@ body {
 .cesium-viewer-bottom { font-family: var(--mono) !important; font-size: 10px !important; color: var(--ink-faint) !important; }
 .globe-error { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 2rem; color: var(--ink-dim); }
 
-/* Record panel */
-#record {
+/* Record + study panels share the same right-docked box */
+#record,
+#study {
   position: absolute;
   top: 0; right: 0; bottom: 0;
   width: 360px;
@@ -242,6 +243,79 @@ body {
 .btn--ghost:hover { border-color: var(--highland); color: var(--highland); }
 :focus-visible { outline: 2px solid var(--basin); outline-offset: 2px; }
 
+/* ---- Segmented control (mode toggle + deck scope) ---- */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.seg--block { display: flex; width: 100%; }
+.seg__btn {
+  flex: 1 0 auto;
+  padding: 0.4rem 0.9rem;
+  background: none;
+  border: 0;
+  color: var(--ink-dim);
+  font: inherit;
+  cursor: pointer;
+}
+.seg__btn + .seg__btn { border-left: 1px solid var(--line-strong); }
+.seg__btn.is-on { background: var(--highland); color: #1a1206; }
+.seg__btn:focus-visible { outline: 2px solid var(--basin); outline-offset: -2px; }
+
+/* ---- Study panel ---- */
+.field[hidden] { display: none; } /* author display:flex would otherwise beat [hidden] */
+.study__head { margin-bottom: 1.1rem; }
+.study__title { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.5rem; }
+.study__sub {
+  margin: 0.15rem 0 0;
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.04em; color: var(--ink-faint);
+}
+.study__counts {
+  font-family: var(--mono); font-size: 0.78rem; color: var(--ink-dim);
+  margin: 1rem 0; min-height: 1.2em;
+}
+.study__progress {
+  font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em;
+  color: var(--ink-faint); margin: 0 0 1.2rem;
+}
+.study__card { margin: 0 0 1.6rem; }
+.study__kicker {
+  font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--basin); margin: 0 0 0.6rem;
+}
+.study__prompt { font-size: 1.05rem; color: var(--ink); margin: 0.6rem 0 0; }
+.study__foot { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.2rem; }
+.study__answer { margin-bottom: 1.2rem; }
+.study__link {
+  display: inline-block; margin-top: 0.5rem;
+  font-family: var(--mono); font-size: 0.78rem; color: var(--basin); text-decoration: none;
+}
+.study__link:hover { text-decoration: underline; }
+.study__rate {
+  font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-faint); margin: 0 0 0.6rem;
+}
+.study__grades { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.study__grade {
+  flex: 1 1 6rem;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
+}
+.study__score { font-family: var(--display); font-size: 2.4rem; margin: 0.6rem 0 0; color: var(--ink); }
+kbd {
+  font-family: var(--mono); font-size: 0.72em;
+  border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 0.3em; color: var(--ink-faint);
+}
+
+/* In Study mode the Explore chrome steps aside so panel + globe own the screen. */
+#app.study #catalogue,
+#app.study #record,
+#app.study #search,
+#app.study #recenter,
+#app.study #toggle-list { display: none; }
+#app.study #sync { margin-left: auto; } /* keep the sync stamp right-aligned without #recenter */
+
 /* ---- Mobile ---- */
 @media (max-width: 800px) {
   .icon-btn { display: inline-flex; align-items: center; justify-content: center; }
@@ -256,7 +330,7 @@ body {
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
   }
   #app.list-open #catalogue { transform: translateX(0); }
-  #record { width: 100%; max-width: 100%; top: auto; height: 58%; border-left: 0; border-top: 1px solid var(--line-strong); }
+  #record, #study { width: 100%; max-width: 100%; top: auto; height: 58%; border-left: 0; border-top: 1px solid var(--line-strong); }
 }
 @media (prefers-reduced-motion: reduce) {
   #catalogue { transition: none; }

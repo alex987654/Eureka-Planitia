@@ -7,6 +7,9 @@ import { createList } from "./explore/list";
 import { renderRecord, clearRecord } from "./explore/record";
 import { loadFeatures } from "./data/load";
 import { loadMeta, formatDate } from "./lib/meta";
+import { createStore } from "./study/store";
+import { createStudyMode } from "./study/mode";
+import type { StudyMode } from "./study/mode";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -17,6 +20,8 @@ async function boot(): Promise<void> {
   const listEl = $("list");
   const syncEl = $("sync");
   const searchEl = $<HTMLInputElement>("search");
+  const studyEl = $("study");
+  const store = createStore();
 
   const [features, meta] = await Promise.all([loadFeatures(), loadMeta().catch(() => null)]);
 
@@ -39,7 +44,9 @@ async function boot(): Promise<void> {
     onPick: (id) => layer.select(id, { fly: true }),
   });
 
+  let study: StudyMode | null = null;
   const layer = createFeatureLayer(viewer, features, (f) => {
+    if (study?.isActive()) return; // in Study mode the panel owns the globe + UI
     if (f) {
       renderRecord(recordEl, f, (id) => layer.flyTo(id));
       list.highlight(f.id);
@@ -66,6 +73,26 @@ async function boot(): Promise<void> {
       duration: 1.0,
     });
     viewer.scene.requestRender();
+  });
+
+  study = createStudyMode({
+    viewer,
+    layer,
+    features,
+    store,
+    appEl: document.getElementById("app")!,
+    studyEl,
+    recordEl,
+    exploreBtn: $("mode-explore"),
+    studyBtn: $("mode-study"),
+    home: { destination: HOME_DESTINATION, orientation: HOME_ORIENTATION },
+  });
+  $("mode-explore").addEventListener("click", () => study?.setActive(false));
+  $("mode-study").addEventListener("click", () => study?.setActive(true));
+
+  window.addEventListener("pagehide", () => store.flush());
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) store.flush();
   });
 
   viewer.scene.requestRender();

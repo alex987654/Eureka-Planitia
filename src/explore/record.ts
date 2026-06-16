@@ -1,22 +1,18 @@
 import type { MarsFeature } from "../data/types";
-import { descriptorMeaning, formatLat, westLon } from "../data/types";
+import { descriptorMeaning, formatLat, quadLabel, westLon } from "../data/types";
 
-function esc(s: string): string {
+export function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c,
   );
 }
 
-export function renderRecord(
-  el: HTMLElement,
-  f: MarsFeature,
-  onFlyTo: (id: number) => void,
-): void {
+/** The info-card body (no panel chrome) shared by the Explore record and the
+ * Study flip side: descriptor + meaning, name, location/size/quad/year, etymology. */
+export function recordInnerHtml(f: MarsFeature): string {
   const meaning = descriptorMeaning(f.type);
   const w = westLon(f.lonEast360);
-  el.hidden = false;
-  el.innerHTML = `
-    <button class="record__close" aria-label="Close details" data-close>×</button>
+  return `
     <p class="record__eyebrow">${esc(f.type)}${meaning ? ` — ${esc(meaning)}` : ""}</p>
     <h2 class="record__name">${esc(f.name)}</h2>
 
@@ -24,11 +20,22 @@ export function renderRecord(
       <div><dt>Location</dt><dd>${formatLat(f.lat)}, ${f.lonEast360.toFixed(2)}° E
         <span class="muted">(${w.toFixed(2)}° W)</span></dd></div>
       ${f.diameterKm ? `<div><dt>Size</dt><dd>${f.diameterKm.toLocaleString()} km across</dd></div>` : ""}
-      ${f.quad ? `<div><dt>Quadrangle</dt><dd>${esc(f.quad.toUpperCase())}</dd></div>` : ""}
+      ${f.quad ? `<div><dt>Quadrangle</dt><dd>${esc(quadLabel(f.quad))}</dd></div>` : ""}
       ${f.approvalYear ? `<div><dt>Named</dt><dd>${f.approvalYear}</dd></div>` : ""}
     </dl>
 
-    ${f.origin ? `<p class="record__origin"><span class="record__label">Etymology</span> ${esc(f.origin)}</p>` : ""}
+    ${f.origin ? `<p class="record__origin"><span class="record__label">Etymology</span> ${esc(f.origin)}</p>` : ""}`;
+}
+
+export function renderRecord(
+  el: HTMLElement,
+  f: MarsFeature,
+  onFlyTo: (id: number) => void,
+): void {
+  el.hidden = false;
+  el.innerHTML = `
+    <button class="record__close" aria-label="Close details" data-close>×</button>
+    ${recordInnerHtml(f)}
 
     <div class="record__actions">
       <button class="btn" data-fly>Fly here</button>

@@ -67,6 +67,12 @@ export function westLon(lonEast360: number): number {
   return (360 - lonEast360) % 360;
 }
 
+/** Raw quad is lowercase "mcNN"; render it as "MC-NN". */
+export function quadLabel(quad: string): string {
+  const m = /^mc0*(\d+)$/i.exec(quad.trim());
+  return m ? `MC-${m[1].padStart(2, "0")}` : quad.toUpperCase();
+}
+
 export function formatLat(lat: number): string {
   if (Math.abs(lat) < 0.005) return "0.00°";
   return `${Math.abs(lat).toFixed(2)}° ${lat >= 0 ? "N" : "S"}`;
