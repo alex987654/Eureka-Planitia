@@ -27,9 +27,13 @@ async function boot(): Promise<void> {
   }
 
   const viewer = createViewer(globeEl);
-  viewer.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(-70, 0, 1.5e7, MARS), // Valles Marineris hemisphere
-  });
+
+  // Default "home" framing: straight down on the Valles Marineris hemisphere from
+  // high orbit. Shared by the initial load and the re-center button so the button
+  // returns to exactly the position the page opens in.
+  const HOME_DESTINATION = Cesium.Cartesian3.fromDegrees(-70, 0, 1.5e7, MARS);
+  const HOME_ORIENTATION = { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 };
+  viewer.camera.setView({ destination: HOME_DESTINATION, orientation: HOME_ORIENTATION });
 
   const list = createList(filtersEl, listEl, features, {
     onPick: (id) => layer.select(id, { fly: true }),
@@ -54,6 +58,15 @@ async function boot(): Promise<void> {
   $("toggle-list").addEventListener("click", () =>
     document.getElementById("app")!.classList.toggle("list-open"),
   );
+
+  $("recenter").addEventListener("click", () => {
+    viewer.camera.flyTo({
+      destination: HOME_DESTINATION,
+      orientation: HOME_ORIENTATION,
+      duration: 1.0,
+    });
+    viewer.scene.requestRender();
+  });
 
   viewer.scene.requestRender();
 }

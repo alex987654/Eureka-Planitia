@@ -58,8 +58,22 @@ body {
   box-shadow: 0 0 0 1px var(--line-strong);
 }
 .brand__mid { color: var(--highland); margin: 0 0.15rem; }
-#search {
+#recenter {
   margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 34px;
+  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+#recenter:hover { color: var(--highland); border-color: var(--highland); }
+#recenter:focus-visible { outline: 2px solid var(--basin); outline-offset: 1px; }
+#search {
   width: min(320px, 42vw);
   padding: 0.45rem 0.8rem;
   background: var(--bg);
