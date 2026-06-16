@@ -38,11 +38,11 @@ type PanelState =
   | { phase: "reveal"; session: Session; index: number }
   | { phase: "summary"; correct: number; total: number; scope: Scope };
 
-const GRADES: { grade: Grade; label: string; key: string; ghost: boolean }[] = [
-  { grade: "again", label: "Again", key: "1", ghost: true },
-  { grade: "hard", label: "Hard", key: "2", ghost: true },
-  { grade: "good", label: "Good", key: "3", ghost: false },
-  { grade: "easy", label: "Easy", key: "4", ghost: false },
+const GRADES: { grade: Grade; label: string; key: string }[] = [
+  { grade: "again", label: "Redo", key: "1" },
+  { grade: "hard", label: "Hardly", key: "2" },
+  { grade: "good", label: "Well", key: "3" },
+  { grade: "easy", label: "Easily", key: "4" },
 ];
 
 function scopeLabel(scope: Scope): string {
@@ -224,7 +224,7 @@ export function createStudyPanel(
     const f = session.cards[index].feature;
     const grades = GRADES.map(
       (g) =>
-        `<button class="btn${g.ghost ? " btn--ghost" : ""} study__grade" data-grade="${g.grade}" type="button">${g.label} <kbd>${g.key}</kbd></button>`,
+        `<button class="btn study__grade" data-grade="${g.grade}" type="button">${g.label} <kbd>${g.key}</kbd></button>`,
     ).join("");
     root.innerHTML = `
       ${progressHtml(session, index)}
