@@ -3,11 +3,9 @@
   "source_url": "https://planetarynames.wr.usgs.gov/",
   "target": "Mars",
   "coordinate_system": "Planetocentric, +East",
-  "last_checked": "2026-06-15T00:16:26Z",
-  "last_updated": "2026-06-15T00:16:26Z",
-  "feature_count": 80,
-  "content_hash": "0535ab351c82b642",
-  "generator_version": "2.0",
-  "note": "seed sample (montes, planitiae, chasmata); full catalogue populates on first CI sync",
-  "is_seed": true
+  "last_checked": "2026-06-16T03:55:07Z",
+  "last_updated": "2026-06-16T03:55:07Z",
+  "feature_count": 2048,
+  "content_hash": "91536ee433459d5a",
+  "generator_version": "2.0"
 }

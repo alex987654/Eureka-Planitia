@@ -105,12 +105,17 @@ def fetch(url: str) -> str:
 
 
 def results_table(html_text: str):
+    # The page contains a small legend table whose header also says "Feature
+    # Name", so pick the LARGEST matching table (the real results grid), not the
+    # first one we encounter.
     p = TableParser()
     p.feed(html_text)
+    best = None
     for t in p.tables:
         if t and any("feature name" in (c or "").lower() for c in t[0]):
-            return t
-    return None
+            if best is None or len(t) > len(best):
+                best = t
+    return best
 
 
 def _num(s):
