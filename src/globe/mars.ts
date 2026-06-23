@@ -61,9 +61,19 @@ export function createViewer(container: HTMLElement): Cesium.Viewer {
   scene.globe.baseColor = Cesium.Color.fromCssColorString("#3a2a20");
   scene.backgroundColor = Cesium.Color.fromCssColorString("#0c0d11");
 
-  // Sensible camera limits for a study globe.
-  scene.screenSpaceCameraController.minimumZoomDistance = 30_000;
-  scene.screenSpaceCameraController.maximumZoomDistance = 4.0e7;
+  // A trackball-style study globe: the camera may SPIN and ZOOM, but not tilt or
+  // free-look. Tilt/look are what let a drag (especially one starting off the
+  // globe's limb, on the black background) pitch the camera away from the planet
+  // — that's what made Mars drift off-centre and slide out of view. With them
+  // off, the camera always orbits and faces the planet's centre, so the globe
+  // stays centred and can never disappear. Programmatic moves (the home view and
+  // "Fly here") set the camera directly, so they're unaffected.
+  const cam = scene.screenSpaceCameraController;
+  cam.minimumZoomDistance = 30_000;
+  cam.maximumZoomDistance = 4.0e7;
+  cam.enableTilt = false;
+  cam.enableLook = false;
+  cam.enableTranslate = false; // a 3D globe doesn't pan; off for safety
 
   return viewer;
 }

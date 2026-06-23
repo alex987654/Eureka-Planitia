@@ -19,8 +19,6 @@ export interface StudyModeDeps {
   appEl: HTMLElement;
   studyEl: HTMLElement;
   recordEl: HTMLElement;
-  exploreBtn: HTMLElement;
-  studyBtn: HTMLElement;
   home: {
     destination: Cesium.Cartesian3;
     orientation: { heading: number; pitch: number; roll: number };
@@ -33,8 +31,7 @@ export interface StudyMode {
 }
 
 export function createStudyMode(deps: StudyModeDeps): StudyMode {
-  const { viewer, layer, features, store, appEl, studyEl, recordEl, exploreBtn, studyBtn, home } =
-    deps;
+  const { viewer, layer, features, store, appEl, studyEl, recordEl, home } = deps;
   let active = false;
 
   function flyHome(): void {
@@ -77,17 +74,9 @@ export function createStudyMode(deps: StudyModeDeps): StudyMode {
     },
   );
 
-  function syncButtons(): void {
-    exploreBtn.classList.toggle("is-on", !active);
-    studyBtn.classList.toggle("is-on", active);
-    exploreBtn.setAttribute("aria-selected", String(!active));
-    studyBtn.setAttribute("aria-selected", String(active));
-  }
-
   function setActive(on: boolean): void {
     if (on === active) return;
     active = on;
-    syncButtons();
     if (on) {
       layer.select(null);
       clearRecord(recordEl);
@@ -105,6 +94,5 @@ export function createStudyMode(deps: StudyModeDeps): StudyMode {
     }
   }
 
-  syncButtons();
   return { setActive, isActive: () => active };
 }

@@ -323,11 +323,32 @@ kbd {
 #app.study #toggle-list { display: none; }
 /* #recenter stays available in Study mode (re-center the globe between cards). */
 
+/* ---- Feedback mode (embedded Tally form, nothing else) ---- */
+#feedback {
+  position: absolute;
+  inset: 0;
+  display: none;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  background: var(--bg);
+  overflow-y: auto;
+}
+#feedback iframe { width: 100%; max-width: 760px; height: 100%; border: 0; }
+#app.feedback #feedback { display: flex; }
+#app.feedback #catalogue,
+#app.feedback #globe,
+#app.feedback #record,
+#app.feedback #study,
+#app.feedback #search,
+#app.feedback #recenter,
+#app.feedback #toggle-list { display: none; }
+
 /* ---- Mobile ---- */
 @media (max-width: 800px) {
   .icon-btn { display: inline-flex; align-items: center; justify-content: center; }
   .brand { font-size: 0.95rem; }
   .sync { display: none; }
+  .seg__btn { padding: 0.35rem 0.55rem; } /* three modes fit the narrow topbar */
   #catalogue {
     position: absolute;
     z-index: 4;

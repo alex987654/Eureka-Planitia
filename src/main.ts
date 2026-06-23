@@ -75,20 +75,44 @@ async function boot(): Promise<void> {
     viewer.scene.requestRender();
   });
 
+  const appEl = document.getElementById("app")!;
   study = createStudyMode({
     viewer,
     layer,
     features,
     store,
-    appEl: document.getElementById("app")!,
+    appEl,
     studyEl,
     recordEl,
-    exploreBtn: $("mode-explore"),
-    studyBtn: $("mode-study"),
     home: { destination: HOME_DESTINATION, orientation: HOME_ORIENTATION },
   });
-  $("mode-explore").addEventListener("click", () => study?.setActive(false));
-  $("mode-study").addEventListener("click", () => study?.setActive(true));
+
+  // Three-way mode selector: Explore / Study / Feedback. Study owns its own
+  // experience via setActive(); this coordinator owns the segmented-button state,
+  // the Feedback class, and lazy-loading the embedded Tally form.
+  const feedbackFrame = $("feedback").querySelector<HTMLIFrameElement>("iframe")!;
+  const modeBtns: Record<"explore" | "study" | "feedback", HTMLElement> = {
+    explore: $("mode-explore"),
+    study: $("mode-study"),
+    feedback: $("mode-feedback"),
+  };
+  function setMode(mode: "explore" | "study" | "feedback"): void {
+    study?.setActive(mode === "study");
+    appEl.classList.toggle("feedback", mode === "feedback");
+    if (mode === "feedback" && !feedbackFrame.src && feedbackFrame.dataset.src) {
+      feedbackFrame.src = feedbackFrame.dataset.src; // load Tally only on first open
+    }
+    for (const key of ["explore", "study", "feedback"] as const) {
+      const on = key === mode;
+      modeBtns[key].classList.toggle("is-on", on);
+      modeBtns[key].setAttribute("aria-selected", String(on));
+    }
+    if (mode !== "feedback") viewer.scene.requestRender(); // repaint the globe on return
+  }
+  modeBtns.explore.addEventListener("click", () => setMode("explore"));
+  modeBtns.study.addEventListener("click", () => setMode("study"));
+  modeBtns.feedback.addEventListener("click", () => setMode("feedback"));
+  setMode("explore");
 
   window.addEventListener("pagehide", () => store.flush());
   document.addEventListener("visibilitychange", () => {
