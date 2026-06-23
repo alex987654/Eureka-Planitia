@@ -42,6 +42,9 @@ async function boot(): Promise<void> {
   const syncEl = $("sync");
   const searchEl = $<HTMLInputElement>("search");
   const studyEl = $("study");
+  const appEl = $("app");
+  const topbarEl = $("topbar");
+  const catalogueEl = $("catalogue");
   const store = createStore();
 
   const [features, meta] = await Promise.all([loadFeatures(), loadMeta().catch(() => null)]);
@@ -62,7 +65,10 @@ async function boot(): Promise<void> {
   viewer.camera.setView({ destination: HOME_DESTINATION, orientation: HOME_ORIENTATION });
 
   const list = createList(filtersEl, listEl, features, {
-    onPick: (id) => layer.select(id, { fly: true }),
+    onPick: (id) => {
+      layer.select(id, { fly: true });
+      appEl.classList.remove("list-open"); // close the drawer after a pick (phones)
+    },
   });
 
   let study: StudyMode | null = null;
@@ -83,9 +89,39 @@ async function boot(): Promise<void> {
 
   searchEl.addEventListener("input", () => list.setQuery(searchEl.value));
 
-  $("toggle-list").addEventListener("click", () =>
-    document.getElementById("app")!.classList.toggle("list-open"),
+  // Catalogue drawer (phones): open via the "Features" button; close via the ✕,
+  // a tap outside, picking a row (onPick), or switching modes (setMode).
+  $("toggle-list").addEventListener("click", () => appEl.classList.toggle("list-open"));
+
+  const drawerClose = document.createElement("button");
+  drawerClose.className = "drawer-close";
+  drawerClose.type = "button";
+  drawerClose.setAttribute("aria-label", "Close features");
+  drawerClose.textContent = "×";
+  catalogueEl.prepend(drawerClose);
+  drawerClose.addEventListener("click", () => appEl.classList.remove("list-open"));
+
+  appEl.addEventListener("click", (e) => {
+    if (!appEl.classList.contains("list-open")) return;
+    const t = e.target as HTMLElement;
+    if (!t.closest("#catalogue") && !t.closest("#toggle-list")) {
+      appEl.classList.remove("list-open"); // tap-outside (scrim) closes it
+    }
+  });
+
+  // Search lives in the top bar on desktop; on phones it moves into the drawer
+  // (top of the catalogue). The single input keeps its existing list.setQuery wiring.
+  const phone = window.matchMedia(
+    "(max-width: 640px), (max-width: 900px) and (max-height: 480px)",
   );
+  function placeSearch(isPhone: boolean): void {
+    if (isPhone) {
+      if (searchEl.parentElement !== catalogueEl) catalogueEl.insertBefore(searchEl, filtersEl);
+    } else if (searchEl.parentElement !== topbarEl) {
+      topbarEl.insertBefore(searchEl, syncEl);
+    }
+  }
+  placeSearch(phone.matches);
 
   $("recenter").addEventListener("click", () => {
     viewer.camera.flyTo({
@@ -96,7 +132,6 @@ async function boot(): Promise<void> {
     viewer.scene.requestRender();
   });
 
-  const appEl = document.getElementById("app")!;
   study = createStudyMode({
     viewer,
     layer,
@@ -118,6 +153,7 @@ async function boot(): Promise<void> {
     feedback: $("mode-feedback"),
   };
   function setMode(mode: "explore" | "study" | "feedback"): void {
+    appEl.classList.remove("list-open"); // don't leave the drawer/scrim stuck across modes
     study?.setActive(mode === "study");
     appEl.classList.toggle("feedback", mode === "feedback");
     if (mode === "feedback") loadFeedbackForm(feedbackFrame);
@@ -126,12 +162,29 @@ async function boot(): Promise<void> {
       modeBtns[key].classList.toggle("is-on", on);
       modeBtns[key].setAttribute("aria-selected", String(on));
     }
-    if (mode !== "feedback") viewer.scene.requestRender(); // repaint the globe on return
+    // Globe was display:none in Feedback — resize before repainting on the way back.
+    if (mode !== "feedback") {
+      viewer.resize();
+      viewer.scene.requestRender();
+    }
   }
   modeBtns.explore.addEventListener("click", () => setMode("explore"));
   modeBtns.study.addEventListener("click", () => setMode("study"));
   modeBtns.feedback.addEventListener("click", () => setMode("feedback"));
   setMode("explore");
+
+  // requestRenderMode means a viewport/orientation/breakpoint size change needs an
+  // explicit resize + render, or the globe can show stale/stretched after the change.
+  const nudge = () => {
+    viewer.resize();
+    viewer.scene.requestRender();
+  };
+  window.addEventListener("resize", nudge);
+  window.addEventListener("orientationchange", () => setTimeout(nudge, 250));
+  phone.addEventListener("change", (e) => {
+    placeSearch(e.matches);
+    nudge();
+  });
 
   window.addEventListener("pagehide", () => store.flush());
   document.addEventListener("visibilitychange", () => {
