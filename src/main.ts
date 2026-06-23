@@ -13,6 +13,27 @@ import type { StudyMode } from "./study/mode";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
+// Load the Tally feedback form on first open (kept off the page until then). Uses
+// Tally's embed.js so its dynamicHeight can size the iframe to its content — that's
+// what removes the form's inner scrollbar. Falls back to a direct src if the embed
+// script is blocked.
+function loadFeedbackForm(frame: HTMLIFrameElement): void {
+  if (frame.dataset.loaded) return;
+  frame.dataset.loaded = "1";
+  const url = frame.dataset.src ?? "";
+  frame.setAttribute("data-tally-src", url);
+  const tally = () => (window as unknown as { Tally?: { loadEmbeds(): void } }).Tally;
+  if (tally()) {
+    tally()!.loadEmbeds();
+    return;
+  }
+  const s = document.createElement("script");
+  s.src = "https://tally.so/widgets/embed.js";
+  s.onload = () => tally()?.loadEmbeds();
+  s.onerror = () => { frame.src = url; }; // embed.js unavailable -> load form directly
+  document.body.appendChild(s);
+}
+
 async function boot(): Promise<void> {
   const globeEl = $("globe");
   const recordEl = $("record");
@@ -99,9 +120,7 @@ async function boot(): Promise<void> {
   function setMode(mode: "explore" | "study" | "feedback"): void {
     study?.setActive(mode === "study");
     appEl.classList.toggle("feedback", mode === "feedback");
-    if (mode === "feedback" && !feedbackFrame.src && feedbackFrame.dataset.src) {
-      feedbackFrame.src = feedbackFrame.dataset.src; // load Tally only on first open
-    }
+    if (mode === "feedback") loadFeedbackForm(feedbackFrame);
     for (const key of ["explore", "study", "feedback"] as const) {
       const on = key === mode;
       modeBtns[key].classList.toggle("is-on", on);

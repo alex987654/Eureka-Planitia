@@ -330,13 +330,30 @@ kbd {
   position: absolute;
   inset: 0;
   display: none;
-  justify-content: center;
   padding: 1.5rem 1rem;
   background: var(--bg);
+  /* Tally's dynamicHeight grows the iframe to fit its content, so the form never
+     shows its own inner scrollbar. If a long form still exceeds a short window,
+     this region scrolls with a slim, theme-coloured bar (Feedback view only). */
   overflow-y: auto;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--ink-faint) transparent;
 }
-#feedback iframe { width: 100%; max-width: 760px; height: 100%; border: 0; }
-#app.feedback #feedback { display: flex; }
+#feedback::-webkit-scrollbar { width: 6px; } /* WebKit/Blink: very slim */
+#feedback::-webkit-scrollbar-track { background: transparent; }
+#feedback::-webkit-scrollbar-thumb {
+  background: var(--ink-faint);
+  border-radius: 3px;
+}
+#feedback::-webkit-scrollbar-thumb:hover { background: var(--highland); }
+#feedback iframe {
+  display: block;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto; /* centred; height is set by Tally's dynamicHeight */
+  border: 0;
+}
+#app.feedback #feedback { display: block; }
 #app.feedback #catalogue,
 #app.feedback #globe,
 #app.feedback #record,
