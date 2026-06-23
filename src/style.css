@@ -74,7 +74,8 @@ body {
 #recenter:hover { color: var(--highland); border-color: var(--highland); }
 #recenter:focus-visible { outline: 2px solid var(--basin); outline-offset: 1px; }
 #search {
-  width: min(320px, 42vw);
+  width: min(260px, 30vw);
+  min-width: 6rem; /* may shrink to free space, but never collapse */
   padding: 0.45rem 0.8rem;
   background: var(--bg);
   border: 1px solid var(--line-strong);
@@ -246,11 +247,12 @@ body {
 /* ---- Segmented control (mode toggle + deck scope) ---- */
 .seg {
   display: inline-flex;
+  flex: 0 0 auto; /* never compress the mode toggle — its labels stay intact */
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   overflow: hidden;
 }
-.seg--block { display: flex; width: 100%; }
+.seg--block { display: flex; flex: 1 1 auto; width: 100%; }
 .seg__btn {
   flex: 1 0 auto;
   padding: 0.4rem 0.9rem;

@@ -107,10 +107,17 @@ export function createFeatureLayer(
     const pos = (e.position as Cesium.ConstantPositionProperty).getValue(
       Cesium.JulianDate.now(),
     )!;
-    const radius = Math.max((x.feature.diameterKm ?? 60) * 1000 * 0.9, 1.2e5);
+    // Frame the feature, but bound how far we pull back so Mars stays large in
+    // view. Huge features (terrae, vast plains, Valles Marineris) would otherwise
+    // fit a planet-sized sphere and shrink the globe almost out of the window.
+    const radius = Cesium.Math.clamp((x.feature.diameterKm ?? 60) * 1000 * 0.9, 1.2e5, 1.2e6);
+    // Steep, near-top-down pitch: a shallow angle centres the surface-point
+    // bounding sphere whose upper half is empty space, which pushes the planet to
+    // the bottom of the window. -75° keeps the globe filling and roughly centred
+    // (and matches the straight-down home view) while keeping a slight 3D lean.
     viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(pos, radius), {
       duration: 1.0,
-      offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), 0),
+      offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-75), 0),
     });
   }
 
