@@ -187,6 +187,11 @@ body {
 .cesium-credit-lightbox-overlay { background: rgba(12, 13, 17, 0.85) !important; }
 .cesium-widget-credits,
 .cesium-viewer-bottom { font-family: var(--mono) !important; font-size: 10px !important; color: var(--ink-faint) !important; }
+/* Replace the (hang-prone) "Data attribution" link with the inline imagery note. */
+.cesium-credit-expand-link { display: none !important; }
+.cesium-viewer-bottom .cesium-credit-textContainer { font-size: 8.5px !important; } /* a touch smaller — it's more text */
+/* Shrink the Cesium ion logo by ~38%. */
+.cesium-credit-logoContainer img { transform: scale(0.62); transform-origin: left center; }
 .globe-error { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 2rem; color: var(--ink-dim); }
 
 /* Record + study panels share the same right-docked box */
@@ -335,10 +340,11 @@ body {
 .study__grade kbd { color: #1a1206; border-color: rgba(26, 18, 6, 0.35); }
 .study__score { font-family: var(--display); font-size: 2.4rem; margin: 0.6rem 0 0; color: var(--ink); }
 
-/* Minimize/restore toggle on the study panel — a small yellow circle that shows a
-   "–" (minimize) and morphs to a "+" (restore) when the panel is collapsed. Shown
-   only on phones (see the phone media query). */
-.study__min {
+/* Minimize/restore toggle — a small yellow circle that shows a "–" (minimize) and
+   morphs to a "+" (restore) when the panel is collapsed. Used by the Study panel
+   and the Explore details panel; shown only on phones (see the phone media query). */
+.study__min,
+.record__min {
   display: none;
   position: absolute;
   top: 0.7rem; right: 0.7rem;
@@ -350,8 +356,8 @@ body {
   cursor: pointer;
   z-index: 2;
 }
-.study__min::before,
-.study__min::after {
+.study__min::before, .study__min::after,
+.record__min::before, .record__min::after {
   content: "";
   position: absolute;
   top: 50%; left: 50%;
@@ -359,14 +365,20 @@ body {
   background: #1a1206;
   border-radius: 2px;
 }
-.study__min::before { width: 11px; height: 2.5px; }          /* the "–" */
-.study__min::after { width: 2.5px; height: 11px; opacity: 0; } /* + bar => "+" when minimized */
-#study.is-min .study__min::after { opacity: 1; }
-.study__min:focus-visible { outline: 2px solid var(--basin); outline-offset: 2px; }
+.study__min::before, .record__min::before { width: 11px; height: 2.5px; }          /* the "–" */
+.study__min::after, .record__min::after { width: 2.5px; height: 11px; opacity: 0; } /* => "+" when minimized */
+#study.is-min .study__min::after,
+#record.is-min .record__min::after { opacity: 1; }
+.study__min:focus-visible,
+.record__min:focus-visible { outline: 2px solid var(--basin); outline-offset: 2px; }
+/* Sit the Explore minimize to the LEFT of the existing Close (Windows-style pair),
+   matching its 30px size so the two align. */
+#record .record__min { right: 3rem; width: 30px; height: 30px; }
 
 /* One uniform bright-gray (var(--ink), the "Study"/brand colour) for every bit of
-   auxiliary/dim/blue text in the Study panel. Amber-filled controls (.btn,
-   .study__grade, the active deck-scope tab) keep their dark text as-is. */
+   auxiliary/dim/blue text in the Study panel and the Explore feature-details panel.
+   Amber-filled controls (.btn, .study__grade, the active deck-scope tab) keep their
+   dark text as-is. */
 #study .study__sub,
 #study .study__counts,
 #study .study__progress,
@@ -379,7 +391,12 @@ body {
 #study .record__grid dt,
 #study .record__grid .muted,
 #study .record__origin,
-#study .record__label {
+#study .record__label,
+#record .record__eyebrow,
+#record .record__grid dt,
+#record .record__grid .muted,
+#record .record__origin,
+#record .record__label {
   color: var(--ink);
 }
 kbd {
@@ -565,14 +582,24 @@ kbd {
   .study__card .record__eyebrow { display: none; } /* "Vallis, valles — a valley" (front only) */
   .study__card { margin-bottom: 1rem; }
 
-  /* Minimize/restore (front + reveal): collapse to a slim bar at the bottom that
-     still shows "1 / 14" + the restore toggle; the globe is then fully visible. */
-  .study__min { display: block; }
+  /* Minimize/restore (Study front + reveal, and Explore details): collapse to a
+     slim bar at the bottom + the restore toggle; the globe is then fully visible. */
+  .study__min, .record__min { display: block; }
   #study.is-min {
     top: auto;
     max-height: 3rem;
     overflow: hidden;
   }
+  /* Explore details: minimize sits next to Close; give the type line room for both
+     buttons, and when collapsed show the feature name in the slim bar. */
+  #record .record__eyebrow { margin-right: 5rem; }
+  #record.is-min {
+    top: auto;
+    max-height: 3.4rem;
+    overflow: hidden;
+  }
+  #record.is-min .record__eyebrow { display: none; }
+  #record.is-min .record__name { margin: 0 5rem 0 0; }
 
   /* Feedback iframe clears the tab bar. */
   #feedback {

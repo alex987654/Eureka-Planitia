@@ -84,7 +84,15 @@ async function boot(): Promise<void> {
   });
 
   recordEl.addEventListener("click", (e) => {
-    if ((e.target as HTMLElement).closest("[data-close]")) layer.select(null);
+    const t = e.target as HTMLElement;
+    if (t.closest("[data-close]")) {
+      layer.select(null);
+    } else if (t.closest("[data-min-record]")) {
+      const min = recordEl.classList.toggle("is-min");
+      recordEl
+        .querySelector("[data-min-record]")
+        ?.setAttribute("aria-label", min ? "Restore details" : "Minimize details");
+    }
   });
 
   searchEl.addEventListener("input", () => list.setQuery(searchEl.value));

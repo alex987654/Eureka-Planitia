@@ -48,7 +48,12 @@ export function createViewer(container: HTMLElement): Cesium.Viewer {
       tilingScheme: new Cesium.GeographicTilingScheme({ ellipsoid: MARS }),
       maximumLevel: 7,
       format: "image/jpeg",
-      credit: new Cesium.Credit("Imagery: NASA/USGS Mars Trek (MOLA colorized hillshade)"),
+      // showOnScreen=true renders the attribution inline, so we avoid the
+      // hang-prone "Data attribution" lightbox link.
+      credit: new Cesium.Credit(
+        "Imagery provided by NASA/USGS Mars Trek (MOLA colorized hillshade)",
+        true,
+      ),
     }),
   );
 

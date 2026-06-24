@@ -33,7 +33,9 @@ export function renderRecord(
   onFlyTo: (id: number) => void,
 ): void {
   el.hidden = false;
+  el.classList.remove("is-min"); // each feature opens expanded
   el.innerHTML = `
+    <button class="record__min" data-min-record type="button" aria-label="Minimize details" title="Minimize"></button>
     <button class="record__close" aria-label="Close details" data-close>×</button>
     ${recordInnerHtml(f)}
 
@@ -47,5 +49,6 @@ export function renderRecord(
 
 export function clearRecord(el: HTMLElement): void {
   el.hidden = true;
+  el.classList.remove("is-min");
   el.innerHTML = "";
 }
