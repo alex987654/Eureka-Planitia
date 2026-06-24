@@ -140,6 +140,51 @@ async function boot(): Promise<void> {
     viewer.scene.requestRender();
   });
 
+  // Guard against zooming so far out that Cesium's frustum partitioning degenerates
+  // and throws "Invalid array length", which permanently stops rendering. The static
+  // maximumZoomDistance cap is bypassed once the cursor ray misses the globe's limb,
+  // so we check the camera's distance from the planet centre every frame (preRender
+  // fires before each render; with requestRenderMode that's only on interaction) and
+  // fly back to the home view — well before the crash distance is reached.
+  const MAX_VIEW_DISTANCE_M = 2.6e7; // centre-distance; home sits at ~1.84e7
+
+  const hint = document.createElement("div");
+  hint.className = "globe-hint";
+  hint.setAttribute("role", "status");
+  hint.setAttribute("aria-live", "polite");
+  hint.textContent = "Let's keep Mars in view.";
+  globeEl.appendChild(hint);
+  let hintTimer = 0;
+  function flashHint(): void {
+    hint.classList.add("is-on");
+    window.clearTimeout(hintTimer);
+    hintTimer = window.setTimeout(() => hint.classList.remove("is-on"), 2500);
+  }
+
+  let resetting = false;
+  viewer.scene.preRender.addEventListener(() => {
+    if (resetting) return;
+    if (Cesium.Cartesian3.magnitude(viewer.camera.position) <= MAX_VIEW_DISTANCE_M) return;
+    resetting = true;
+    // Lock inputs during the flight so continued scrolling can't fight or cancel it.
+    viewer.scene.screenSpaceCameraController.enableInputs = false;
+    flashHint();
+    viewer.camera.flyTo({
+      destination: HOME_DESTINATION,
+      orientation: HOME_ORIENTATION,
+      duration: 0.8,
+      complete: () => {
+        viewer.scene.screenSpaceCameraController.enableInputs = true;
+        resetting = false;
+        viewer.scene.requestRender();
+      },
+      cancel: () => {
+        viewer.scene.screenSpaceCameraController.enableInputs = true;
+        resetting = false;
+      },
+    });
+  });
+
   study = createStudyMode({
     viewer,
     layer,

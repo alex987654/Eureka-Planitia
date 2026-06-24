@@ -75,7 +75,11 @@ export function createViewer(container: HTMLElement): Cesium.Viewer {
   // "Fly here") set the camera directly, so they're unaffected.
   const cam = scene.screenSpaceCameraController;
   cam.minimumZoomDistance = 30_000;
-  cam.maximumZoomDistance = 4.0e7;
+  // Backstop for the cursor-on-globe zoom path. The real guard against the
+  // far-zoom "Invalid array length" render crash lives in main.ts (a preRender
+  // distance check), since this cap is bypassed once the cursor ray misses the
+  // limb. Kept just above the guard's threshold so the guard always fires first.
+  cam.maximumZoomDistance = 3.0e7;
   cam.enableTilt = false;
   cam.enableLook = false;
   cam.enableTranslate = false; // a 3D globe doesn't pan; off for safety

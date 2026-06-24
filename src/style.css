@@ -194,6 +194,19 @@ body {
 .cesium-credit-logoContainer img { transform: scale(0.62); transform-origin: left center; }
 .globe-error { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 2rem; color: var(--ink-dim); }
 
+/* Transient cue shown when an over-zoom snaps the globe back to the home view. */
+.globe-hint {
+  position: absolute; top: 1rem; left: 50%; transform: translate(-50%, -8px);
+  z-index: 4; pointer-events: none;
+  padding: 0.45rem 0.85rem; border-radius: 999px;
+  font-family: var(--mono); font-size: 0.8rem; color: var(--ink);
+  background: var(--glass-bg); border: 1px solid var(--glass-edge);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow); text-shadow: var(--glass-text-shadow);
+  opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.globe-hint.is-on { opacity: 1; transform: translate(-50%, 0); }
+
 /* Record + study panels share the same right-docked box */
 #record,
 #study {
