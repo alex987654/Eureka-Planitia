@@ -84,7 +84,7 @@ body {
   background: none;
   border: 1px solid var(--line-strong);
   border-radius: 7px;
-  color: var(--ink-dim);
+  color: #b6603e; /* terracotta — reads as a "re-center the planet" control */
   cursor: pointer;
 }
 #recenter:hover { color: var(--highland); border-color: var(--highland); }
@@ -363,6 +363,25 @@ body {
 .study__min::after { width: 2.5px; height: 11px; opacity: 0; } /* + bar => "+" when minimized */
 #study.is-min .study__min::after { opacity: 1; }
 .study__min:focus-visible { outline: 2px solid var(--basin); outline-offset: 2px; }
+
+/* One uniform bright-gray (var(--ink), the "Study"/brand colour) for every bit of
+   auxiliary/dim/blue text in the Study panel. Amber-filled controls (.btn,
+   .study__grade, the active deck-scope tab) keep their dark text as-is. */
+#study .study__sub,
+#study .study__counts,
+#study .study__progress,
+#study .study__kicker,
+#study .study__rate,
+#study .study__link,
+#study .field span,
+#study .seg__btn:not(.is-on),
+#study .record__eyebrow,
+#study .record__grid dt,
+#study .record__grid .muted,
+#study .record__origin,
+#study .record__label {
+  color: var(--ink);
+}
 kbd {
   font-family: var(--mono); font-size: 0.72em;
   border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 0.3em; color: var(--ink-faint);
