@@ -334,6 +334,35 @@ body {
 .study__grade[data-grade="easy"]  { background: hsl(40, 65%, 75%); }
 .study__grade kbd { color: #1a1206; border-color: rgba(26, 18, 6, 0.35); }
 .study__score { font-family: var(--display); font-size: 2.4rem; margin: 0.6rem 0 0; color: var(--ink); }
+
+/* Minimize/restore toggle on the study panel — a small yellow circle that shows a
+   "–" (minimize) and morphs to a "+" (restore) when the panel is collapsed. Shown
+   only on phones (see the phone media query). */
+.study__min {
+  display: none;
+  position: absolute;
+  top: 0.7rem; right: 0.7rem;
+  width: 24px; height: 24px;
+  padding: 0;
+  border: 0; border-radius: 50%;
+  background: var(--highland);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  z-index: 2;
+}
+.study__min::before,
+.study__min::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1a1206;
+  border-radius: 2px;
+}
+.study__min::before { width: 11px; height: 2.5px; }          /* the "–" */
+.study__min::after { width: 2.5px; height: 11px; opacity: 0; } /* + bar => "+" when minimized */
+#study.is-min .study__min::after { opacity: 1; }
+.study__min:focus-visible { outline: 2px solid var(--basin); outline-offset: 2px; }
 kbd {
   font-family: var(--mono); font-size: 0.72em;
   border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 0.3em; color: var(--ink-faint);
@@ -506,8 +535,25 @@ kbd {
   }
   #record { height: auto; max-height: 70%; }
   #study { height: auto; max-height: 66%; }
+  #record, #study { padding: 1.1rem 1.1rem 1.3rem; } /* tighter than desktop */
   .study__grade { flex: 1 1 40%; min-height: 44px; } /* fat 2×2 grade grid */
   .study__foot .btn { min-height: 44px; }
+
+  /* Slim the QUESTION (front) state: drop auxiliary info so it covers less globe.
+     Keep only number, feature name, the question, and the buttons. */
+  .study__scope { display: none; }                 /* "· Whole catalogue" in progress */
+  .study__card .study__kicker { display: none; }   /* "Name → Locate" / "Locate → Identify" */
+  .study__card .record__eyebrow { display: none; } /* "Vallis, valles — a valley" (front only) */
+  .study__card { margin-bottom: 1rem; }
+
+  /* Minimize/restore (front + reveal): collapse to a slim bar at the bottom that
+     still shows "1 / 14" + the restore toggle; the globe is then fully visible. */
+  .study__min { display: block; }
+  #study.is-min {
+    top: auto;
+    max-height: 3rem;
+    overflow: hidden;
+  }
 
   /* Feedback iframe clears the tab bar. */
   #feedback {

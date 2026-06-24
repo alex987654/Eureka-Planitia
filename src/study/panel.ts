@@ -69,7 +69,7 @@ export function createStudyPanel(
   function goPicker(): void {
     hooks.onSessionEnd();
     state = { phase: "picker" };
-    renderPicker();
+    render(); // clears the minimized state, then shows the picker
   }
 
   function goFront(session: Session, index: number): void {
@@ -119,20 +119,40 @@ export function createStudyPanel(
   // ---- rendering ---------------------------------------------------------
 
   function render(): void {
+    root.classList.remove("is-min"); // each new state opens expanded
     switch (state.phase) {
       case "picker":
         renderPicker();
         break;
       case "front":
         renderFront(state.session, state.index);
+        addMinButton();
         break;
       case "reveal":
         renderReveal(state.session, state.index);
+        addMinButton();
         break;
       case "summary":
         renderSummary(state.correct, state.total, state.scope);
         break;
     }
+  }
+
+  // Minimize / restore: collapse the panel to a slim bar at the bottom to peek the
+  // globe, then restore to continue. A small yellow toggle on the panel ("–" ⇄ "+").
+  function addMinButton(): void {
+    root.insertAdjacentHTML(
+      "afterbegin",
+      `<button class="study__min" data-min type="button" aria-label="Minimize panel" title="Minimize"></button>`,
+    );
+    $<HTMLButtonElement>("[data-min]")?.addEventListener("click", toggleMin);
+  }
+
+  function toggleMin(): void {
+    const minimized = root.classList.toggle("is-min");
+    const btn = $<HTMLButtonElement>("[data-min]");
+    btn?.setAttribute("aria-label", minimized ? "Restore panel" : "Minimize panel");
+    btn?.setAttribute("title", minimized ? "Restore" : "Minimize");
   }
 
   function buildPreview(): void {
@@ -188,7 +208,8 @@ export function createStudyPanel(
   }
 
   function progressHtml(session: Session, index: number): string {
-    return `<p class="study__progress">${index + 1} / ${session.cards.length} · ${esc(scopeLabel(session.scope))}</p>`;
+    // Scope ("· Whole catalogue") is wrapped so it can be hidden on phones.
+    return `<p class="study__progress">${index + 1} / ${session.cards.length}<span class="study__scope"> · ${esc(scopeLabel(session.scope))}</span></p>`;
   }
 
   function footHtml(): string {
