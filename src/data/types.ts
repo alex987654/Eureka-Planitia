@@ -58,6 +58,36 @@ export function descriptorKey(featureType: string): string {
   return (featureType.split(",")[0] || "").trim().toLowerCase();
 }
 
+// --- Globe marker shape ----------------------------------------------------
+// Very large or very tall features get a square glyph (vs the default circle) so
+// scale reads on the globe. The catalogue has no elevation, so mountain heights
+// come from a small curated lookup of the well-known tall Mars montes.
+export const SQUARE_MIN_DIAMETER_KM = 1000;
+export const MONS_TALL_MIN_KM = 5;
+
+// Curated montes height (km) = max of (summit above areoid, relief above base), so a
+// single `>= 5` test implements the "tall by either measure" union. Only montes UNDER
+// 1000 km diameter need listing (≥1000 km are already squares via diameter). Keyed by
+// exact gazetteer `name`; one line per addition.
+export const MONS_HEIGHT_KM: Record<string, number> = {
+  "Olympus Mons": 22, // ~21.9 km above datum
+  "Ascraeus Mons": 18,
+  "Arsia Mons": 18,
+  "Pavonis Mons": 14,
+  "Elysium Mons": 14, // ~14 above datum / ~12.6 relief
+  "Alba Mons": 7, // broad shield, summit ~6.8
+  "Aeolis Mons": 5.5, // Mt Sharp — summit below datum, ~5.5 km relief (union rule)
+  "Apollinaris Mons": 5, // edifice ~5 km (borderline)
+};
+
+/** Globe glyph for a feature: a square for the very large / very tall, else a circle. */
+export function markerShape(f: MarsFeature): "circle" | "square" {
+  if ((f.diameterKm ?? 0) >= SQUARE_MIN_DIAMETER_KM) return "square";
+  if (descriptorKey(f.type) === "mons" && (MONS_HEIGHT_KM[f.name] ?? 0) >= MONS_TALL_MIN_KM)
+    return "square";
+  return "circle";
+}
+
 export function descriptorMeaning(featureType: string): string | null {
   return DESCRIPTOR_MEANING[descriptorKey(featureType)] ?? null;
 }

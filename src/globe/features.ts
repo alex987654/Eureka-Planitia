@@ -1,5 +1,6 @@
 import * as Cesium from "cesium";
 import type { MarsFeature } from "../data/types";
+import { markerShape } from "../data/types";
 import { surfacePosition } from "./mars";
 
 const BASE_COLOR = Cesium.Color.fromCssColorString("#e9e5da").withAlpha(0.92);
@@ -8,9 +9,30 @@ const OUTLINE = Cesium.Color.fromCssColorString("#14161b").withAlpha(0.85);
 const LABEL_FILL = Cesium.Color.fromCssColorString("#f2efe6");
 const LABEL_OUTLINE = Cesium.Color.fromCssColorString("#101216");
 
+// Square glyph for very large / very tall features. Drawn once as a white canvas so
+// billboard.color can tint it (white -> BASE_COLOR / amber -> SELECT_COLOR), exactly
+// like the point states; the dark border stays dark under either tint. Billboard
+// scale = desiredPx / SQUARE_IMG_PX renders it crisply at the wanted pixel size.
+const SQUARE_IMG_PX = 64;
+const SQUARE_IMAGE: HTMLCanvasElement = (() => {
+  const c = document.createElement("canvas");
+  c.width = c.height = SQUARE_IMG_PX;
+  const ctx = c.getContext("2d")!;
+  const pad = 4; // keep the border off the canvas edge so it isn't clipped when scaled
+  const x = pad;
+  const w = SQUARE_IMG_PX - pad * 2;
+  ctx.fillStyle = "#ffffff"; // white -> tinted by billboard.color
+  ctx.fillRect(x, x, w, w);
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = OUTLINE.toCssColorString();
+  ctx.strokeRect(x, x, w, w);
+  return c;
+})();
+
 interface EntityExtra {
   feature: MarsFeature;
-  basePx: number;
+  shape: "circle" | "square";
+  basePx: number; // point pixelSize for circles; square side (px) for squares
   baseFar: number;
 }
 
@@ -23,6 +45,12 @@ function farForDiameter(d: number | null): number {
 function pixelForDiameter(d: number | null): number {
   const dd = d && d > 0 ? d : 60;
   return Cesium.Math.clamp(3 + Math.log10(dd) * 2.0, 4, 9);
+}
+
+/** Square side (px) — notably larger than the 4–9 px circles it replaces. */
+function squarePxForDiameter(d: number | null): number {
+  const dd = d && d > 0 ? d : 1000;
+  return Cesium.Math.clamp(7 + Math.log10(dd) * 3.0, 13, 20);
 }
 
 export interface FeatureLayer {
@@ -44,20 +72,36 @@ export function createFeatureLayer(
   const ds = new Cesium.CustomDataSource("mars-features");
   const byId = new Map<number, Cesium.Entity>();
 
+  const scaleByDistance = new Cesium.NearFarScalar(1.0e5, 1.0, 3.0e7, 0.45);
+
   for (const f of features) {
     const far = farForDiameter(f.diameterKm);
-    const px = pixelForDiameter(f.diameterKm);
+    const shape = markerShape(f);
+    const px = shape === "square" ? squarePxForDiameter(f.diameterKm) : pixelForDiameter(f.diameterKm);
     const e = ds.entities.add({
       id: String(f.id),
       position: surfacePosition(f.lon180, f.lat),
-      point: new Cesium.PointGraphics({
-        pixelSize: px,
-        color: BASE_COLOR,
-        outlineColor: OUTLINE,
-        outlineWidth: 1,
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, far),
-        scaleByDistance: new Cesium.NearFarScalar(1.0e5, 1.0, 3.0e7, 0.45),
-      }),
+      point:
+        shape === "square"
+          ? undefined
+          : new Cesium.PointGraphics({
+              pixelSize: px,
+              color: BASE_COLOR,
+              outlineColor: OUTLINE,
+              outlineWidth: 1,
+              distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, far),
+              scaleByDistance,
+            }),
+      billboard:
+        shape === "square"
+          ? new Cesium.BillboardGraphics({
+              image: SQUARE_IMAGE,
+              color: BASE_COLOR,
+              scale: px / SQUARE_IMG_PX,
+              distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, far),
+              scaleByDistance,
+            })
+          : undefined,
       label: new Cesium.LabelGraphics({
         text: f.name,
         font: "500 13px system-ui, sans-serif",
@@ -71,7 +115,7 @@ export function createFeatureLayer(
         translucencyByDistance: new Cesium.NearFarScalar(far * 0.55, 1.0, far * 0.78, 0.0),
       }),
     });
-    (e as unknown as { _x: EntityExtra })._x = { feature: f, basePx: px, baseFar: far };
+    (e as unknown as { _x: EntityExtra })._x = { feature: f, shape, basePx: px, baseFar: far };
     byId.set(f.id, e);
   }
 
@@ -90,13 +134,21 @@ export function createFeatureLayer(
   }
 
   function style(e: Cesium.Entity | null, selected: boolean): void {
-    if (!e || !e.point || !e.label) return;
+    if (!e || !e.label || (!e.point && !e.billboard)) return;
     const x = (e as unknown as { _x: EntityExtra })._x;
-    e.point.color = new Cesium.ConstantProperty(selected ? SELECT_COLOR : BASE_COLOR);
-    e.point.pixelSize = new Cesium.ConstantProperty(selected ? x.basePx + 5 : x.basePx);
-    e.point.distanceDisplayCondition = new Cesium.ConstantProperty(
+    const color = new Cesium.ConstantProperty(selected ? SELECT_COLOR : BASE_COLOR);
+    const ddc = new Cesium.ConstantProperty(
       new Cesium.DistanceDisplayCondition(0, selected ? Number.MAX_VALUE : x.baseFar),
     );
+    if (x.shape === "square" && e.billboard) {
+      e.billboard.color = color;
+      e.billboard.scale = new Cesium.ConstantProperty((selected ? x.basePx + 6 : x.basePx) / SQUARE_IMG_PX);
+      e.billboard.distanceDisplayCondition = ddc;
+    } else if (e.point) {
+      e.point.color = color;
+      e.point.pixelSize = new Cesium.ConstantProperty(selected ? x.basePx + 5 : x.basePx);
+      e.point.distanceDisplayCondition = ddc;
+    }
     e.label.distanceDisplayCondition = new Cesium.ConstantProperty(
       new Cesium.DistanceDisplayCondition(0, selected ? Number.MAX_VALUE : x.baseFar * 0.78),
     );
