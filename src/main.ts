@@ -2,6 +2,7 @@ import "cesium/Build/Cesium/Widgets/widgets.css";
 import "./style.css";
 import * as Cesium from "cesium";
 import { createViewer, MARS } from "./globe/mars";
+import { addPoleMarkers } from "./globe/poles";
 import { createFeatureLayer } from "./globe/features";
 import { createList } from "./explore/list";
 import { renderRecord, clearRecord } from "./explore/record";
@@ -56,6 +57,7 @@ async function boot(): Promise<void> {
   }
 
   const viewer = createViewer(globeEl);
+  addPoleMarkers(viewer); // "N"/"S" rotational-pole cues, visible in every mode
 
   // Default "home" framing: straight down on the Valles Marineris hemisphere from
   // high orbit. Shared by the initial load and the re-center button so the button
