@@ -1,5 +1,5 @@
 import * as Cesium from "cesium";
-import { MARS, surfacePosition } from "./mars";
+import { surfacePosition } from "./mars";
 
 // Orientation cues at Mars's rotational poles: a bold "N" at lat +90 and "S" at
 // lat -90. They live in their own data source (not the "mars-features" one), so
@@ -32,18 +32,20 @@ export function addPoleMarkers(viewer: Cesium.Viewer): void {
     { text: "S", pos: surfacePosition(0, -90) },
   ].map(({ text, pos }) => ({
     pos,
+    r2: Cesium.Cartesian3.magnitudeSquared(pos), // |pole|^2 == R^2 (it's on the sphere)
     entity: ds.entities.add({ position: pos, label: poleLabel(text) }),
   }));
   viewer.dataSources.add(ds);
 
-  // Hide the pole behind the planet. depthTestAgainstTerrain is a global flag
-  // that would also occlude the feature markers (which intentionally show
-  // through), so we scope occlusion to just these two with an EllipsoidalOccluder.
-  const occluder = new Cesium.EllipsoidalOccluder(MARS, viewer.camera.positionWC);
+  // Hide the pole on the far side. A surface point p (|p| = R, on the Mars sphere
+  // centred at the world origin) is on the near, camera-facing cap of the horizon
+  // plane iff dot(p, eye) >= R^2. We scope this to just these two entities;
+  // depthTestAgainstTerrain is a global flag that would also occlude the feature
+  // markers, which intentionally show through.
   viewer.scene.preRender.addEventListener(() => {
-    occluder.cameraPosition = viewer.camera.positionWC;
-    for (const { entity, pos } of poles) {
-      const visible = occluder.isPointVisible(pos);
+    const eye = viewer.camera.positionWC;
+    for (const { entity, pos, r2 } of poles) {
+      const visible = Cesium.Cartesian3.dot(pos, eye) >= r2;
       // Write only on change: toggling show requests a render (requestRenderMode),
       // and the next preRender finds no change, so it settles instead of looping.
       if (entity.show !== visible) {
