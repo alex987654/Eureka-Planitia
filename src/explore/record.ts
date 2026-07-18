@@ -53,7 +53,7 @@ export function landingInnerHtml(s: LandingSite, nearby: ColloquialFeature[]): s
     .map((c) => `<button class="chip" type="button" data-goto="${c.id}">${esc(c.name)}</button>`)
     .join("");
   return `
-    <p class="record__eyebrow${s.success ? "" : " is-failure"}">Landing site — ${esc(s.outcome)}</p>
+    <p class="record__eyebrow">Landing site — ${esc(s.outcome)}</p>
     <h2 class="record__name">${esc(s.name)}</h2>
 
     <dl class="record__grid">

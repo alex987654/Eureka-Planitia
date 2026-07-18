@@ -328,6 +328,9 @@ body {
 
 /* ---- Study panel ---- */
 .field[hidden] { display: none; } /* author display:flex would otherwise beat [hidden] */
+/* Three deck scopes don't fit side by side in the panel; stack them vertically. */
+#study .seg--block { flex-direction: column; }
+#study .seg--block .seg__btn + .seg__btn { border-left: 0; border-top: 1px solid var(--line-strong); }
 .study__head { margin-bottom: 1.1rem; }
 .study__title { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.5rem; }
 .study__sub {
@@ -433,10 +436,6 @@ body {
 #record .record__label {
   color: var(--ink);
 }
-/* Failed landing attempts: the outcome line reads terracotta, not the usual blue. */
-#record .record__eyebrow.is-failure,
-#study .record__eyebrow.is-failure,
-.record__eyebrow.is-failure { color: #cf8266; }
 kbd {
   font-family: var(--mono); font-size: 0.72em;
   border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 0.3em; color: var(--ink-faint);
