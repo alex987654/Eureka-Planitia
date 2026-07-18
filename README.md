@@ -14,6 +14,13 @@ Nomenclature** (<https://planetarynames.wr.usgs.gov/>). One source, one
 attribution. (Globe imagery, added in Phase 1, is credited separately to
 NASA/USGS Mars Trek.)
 
+Supplementary content — probe **landing sites** (blue stars on the globe; hollow
+for failed attempts) and **colloquial names** like "Mount Sharp" (aliases on
+official records, plus close-zoom dots for rover-scale features) — is
+hand-curated in `public/data/supplementary/` from NASA NSSDCA and mission
+archives, and compiled into `supplementary.json` by
+`scripts/build_supplementary.py`.
+
 ## Data schema (`mars_features.geojson`)
 
 Point features in **−180…180 +East, planetocentric latitude** (Cesium-ready).

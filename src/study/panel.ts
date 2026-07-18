@@ -5,12 +5,13 @@
 
 import type { MarsFeature } from "../data/types";
 import { descriptorMeaning, quadLabel } from "../data/types";
+import type { LandingSite } from "../data/supplementary";
 import type { Store } from "./store";
 import type { Grade } from "./sm2";
 import { GRADE_Q, review, todayISO } from "./sm2";
-import type { Scope, Session, SessionCard } from "./deck";
-import { availableQuads, buildSession } from "./deck";
-import { esc, recordInnerHtml } from "../explore/record";
+import type { Scope, Session, SessionCard, StudyItem } from "./deck";
+import { availableQuads, buildSession, itemId } from "./deck";
+import { esc, landingInnerHtml, recordInnerHtml } from "../explore/record";
 import { formatDate } from "../lib/meta";
 
 export interface StudyPanelHooks {
@@ -24,6 +25,7 @@ export interface StudyPanelHooks {
 
 export interface StudyPanelDeps {
   features: MarsFeature[];
+  landingSites: LandingSite[];
   store: Store;
 }
 
@@ -46,7 +48,11 @@ const GRADES: { grade: Grade; label: string; key: string }[] = [
 ];
 
 function scopeLabel(scope: Scope): string {
-  return scope.kind === "all" ? "Whole catalogue" : quadLabel(scope.quad);
+  return scope.kind === "all"
+    ? "Whole catalogue"
+    : scope.kind === "landing"
+      ? "Landing sites"
+      : quadLabel(scope.quad);
 }
 
 export function createStudyPanel(
@@ -54,8 +60,12 @@ export function createStudyPanel(
   deps: StudyPanelDeps,
   hooks: StudyPanelHooks,
 ): StudyPanel {
-  const { features, store } = deps;
+  const { features, landingSites, store } = deps;
   const quads = availableQuads(features);
+  const items: StudyItem[] = [
+    ...features.map((f): StudyItem => ({ kind: "feature", feature: f })),
+    ...landingSites.map((s): StudyItem => ({ kind: "landing", site: s })),
+  ];
 
   let state: PanelState = { phase: "picker" };
   let scope: Scope = { kind: "all" };
@@ -90,10 +100,11 @@ export function createStudyPanel(
     if (state.phase !== "reveal") return;
     const { session, index } = state;
     const card = session.cards[index];
-    const next = review(store.get(card.feature.id), g);
-    store.set(card.feature.id, next);
+    const id = itemId(card.item);
+    const next = review(store.get(id), g);
+    store.set(id, next);
     store.logReview({
-      id: card.feature.id,
+      id,
       grade: g,
       q: GRADE_Q[g],
       atISO: todayISO(),
@@ -156,7 +167,7 @@ export function createStudyPanel(
   }
 
   function buildPreview(): void {
-    preview = buildSession(features, store, scope);
+    preview = buildSession(items, store, scope);
     const counts = $<HTMLParagraphElement>("[data-counts]");
     const start = $<HTMLButtonElement>("[data-start]");
     if (!counts || !start) return;
@@ -184,6 +195,7 @@ export function createStudyPanel(
       <div class="seg seg--block" role="group" aria-label="Deck scope">
         <button class="seg__btn${scope.kind === "all" ? " is-on" : ""}" data-scope="all" type="button">Whole catalogue</button>
         <button class="seg__btn${scope.kind === "quad" ? " is-on" : ""}" data-scope="quad" type="button">By quadrangle</button>
+        <button class="seg__btn${scope.kind === "landing" ? " is-on" : ""}" data-scope="landing" type="button">Landing sites</button>
       </div>
       <label class="field" data-quadwrap${scope.kind === "quad" ? "" : " hidden"}>
         <span>Quadrangle</span>
@@ -195,7 +207,12 @@ export function createStudyPanel(
     for (const b of root.querySelectorAll<HTMLButtonElement>("[data-scope]")) {
       b.addEventListener("click", () => {
         const kind = b.dataset.scope;
-        scope = kind === "quad" ? { kind: "quad", quad: scope.kind === "quad" ? scope.quad : quads[0] ?? "" } : { kind: "all" };
+        scope =
+          kind === "quad"
+            ? { kind: "quad", quad: scope.kind === "quad" ? scope.quad : quads[0] ?? "" }
+            : kind === "landing"
+              ? { kind: "landing" }
+              : { kind: "all" };
         renderPicker();
       });
     }
@@ -222,19 +239,37 @@ export function createStudyPanel(
 
   function renderFront(session: Session, index: number): void {
     const card = session.cards[index];
-    const f = card.feature;
     let body: string;
-    if (card.direction === "locate") {
-      body = `
-        <p class="study__kicker">Locate → Identify</p>
-        <p class="study__prompt">What is the highlighted feature — and what kind of feature is it?</p>`;
+    if (card.item.kind === "landing") {
+      const s = card.item.site;
+      if (card.direction === "locate") {
+        body = `
+          <p class="study__kicker">Locate → Identify</p>
+          <p class="study__prompt">Which mission landed at the highlighted site?</p>`;
+      } else {
+        // Mission + craft help recall; region/coordinates would be the answer.
+        const detail = [s.mission !== s.name ? s.mission : "", s.craft].filter(Boolean).join(" · ");
+        body = `
+          <p class="study__kicker">Name → Locate</p>
+          <p class="record__eyebrow">Landing site — ${s.landingDate.slice(0, 4)}</p>
+          <h2 class="record__name">${esc(s.name)}</h2>
+          <p class="study__sub">${esc(detail)}</p>
+          <p class="study__prompt">Where did ${esc(s.name)} land on Mars?</p>`;
+      }
     } else {
-      const meaning = descriptorMeaning(f.type);
-      body = `
-        <p class="study__kicker">Name → Locate</p>
-        <p class="record__eyebrow">${esc(f.type)}${meaning ? ` — ${esc(meaning)}` : ""}</p>
-        <h2 class="record__name">${esc(f.name)}</h2>
-        <p class="study__prompt">Where is this on Mars?</p>`;
+      const f = card.item.feature;
+      if (card.direction === "locate") {
+        body = `
+          <p class="study__kicker">Locate → Identify</p>
+          <p class="study__prompt">What is the highlighted feature — and what kind of feature is it?</p>`;
+      } else {
+        const meaning = descriptorMeaning(f.type);
+        body = `
+          <p class="study__kicker">Name → Locate</p>
+          <p class="record__eyebrow">${esc(f.type)}${meaning ? ` — ${esc(meaning)}` : ""}</p>
+          <h2 class="record__name">${esc(f.name)}</h2>
+          <p class="study__prompt">Where is this on Mars?</p>`;
+      }
     }
     root.innerHTML = `${progressHtml(session, index)}<div class="study__card">${body}</div>${footHtml()}`;
     $<HTMLButtonElement>("[data-reveal]")?.addEventListener("click", reveal);
@@ -242,17 +277,19 @@ export function createStudyPanel(
   }
 
   function renderReveal(session: Session, index: number): void {
-    const f = session.cards[index].feature;
+    const item = session.cards[index].item;
+    const answer =
+      item.kind === "landing"
+        ? landingInnerHtml(item.site, [])
+        : `${recordInnerHtml(item.feature)}
+           <a class="study__link" href="${esc(item.feature.url)}" target="_blank" rel="noopener">View in USGS Gazetteer ↗</a>`;
     const grades = GRADES.map(
       (g) =>
         `<button class="btn study__grade" data-grade="${g.grade}" type="button">${g.label} <kbd>${g.key}</kbd></button>`,
     ).join("");
     root.innerHTML = `
       ${progressHtml(session, index)}
-      <div class="study__answer">
-        ${recordInnerHtml(f)}
-        <a class="study__link" href="${esc(f.url)}" target="_blank" rel="noopener">View in USGS Gazetteer ↗</a>
-      </div>
+      <div class="study__answer">${answer}</div>
       <p class="study__rate">How well did you recall it?</p>
       <div class="study__grades">${grades}</div>`;
     for (const b of root.querySelectorAll<HTMLButtonElement>("[data-grade]")) {
@@ -275,7 +312,7 @@ export function createStudyPanel(
       </div>`;
     $<HTMLButtonElement>("[data-again]")?.addEventListener("click", () => {
       scope = sessionScope;
-      preview = buildSession(features, store, scope);
+      preview = buildSession(items, store, scope);
       startSession();
     });
     $<HTMLButtonElement>("[data-change]")?.addEventListener("click", goPicker);

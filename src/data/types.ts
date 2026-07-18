@@ -17,6 +17,16 @@ export interface MarsFeature {
   origin: string;     // etymology
   approvalYear: number | null;
   url: string;        // gazetteer deep-link
+  aka?: Alias[];      // colloquial names for this official feature ("Mount Sharp")
+}
+
+/** A colloquial/press nickname for an officially named feature. */
+export interface Alias {
+  alias: string;
+  officialId: number;
+  officialName: string;
+  year: number | null; // when the nickname arose
+  description: string;
 }
 
 // IAU descriptor terms -> plain-language meaning. Keyed by the singular Latin

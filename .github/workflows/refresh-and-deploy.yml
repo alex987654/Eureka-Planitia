@@ -34,6 +34,13 @@ jobs:
           python scripts/fetch_mars_features.py --out public/data \
             || echo "::warning::Gazetteer refresh failed; using committed snapshot."
 
+      # Rebuild supplementary.json against the freshly refreshed gazetteer so
+      # alias ids stay resolved. On failure the committed snapshot deploys.
+      - name: Build supplementary data
+        run: |
+          python scripts/build_supplementary.py \
+            || echo "::warning::Supplementary build failed; using committed snapshot."
+
       - uses: actions/setup-node@v4
         with:
           node-version: "20"

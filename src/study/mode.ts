@@ -6,15 +6,18 @@
 import type * as Cesium from "cesium";
 import type { FeatureLayer } from "../globe/features";
 import type { MarsFeature } from "../data/types";
+import type { LandingSite } from "../data/supplementary";
 import type { Store } from "./store";
 import { clearRecord } from "../explore/record";
 import { createStudyPanel } from "./panel";
 import type { SessionCard } from "./deck";
+import { itemId } from "./deck";
 
 export interface StudyModeDeps {
   viewer: Cesium.Viewer;
   layer: FeatureLayer;
   features: MarsFeature[];
+  landingSites: LandingSite[];
   store: Store;
   appEl: HTMLElement;
   studyEl: HTMLElement;
@@ -31,7 +34,7 @@ export interface StudyMode {
 }
 
 export function createStudyMode(deps: StudyModeDeps): StudyMode {
-  const { viewer, layer, features, store, appEl, studyEl, recordEl, home } = deps;
+  const { viewer, layer, features, landingSites, store, appEl, studyEl, recordEl, home } = deps;
   let active = false;
 
   function flyHome(): void {
@@ -45,13 +48,13 @@ export function createStudyMode(deps: StudyModeDeps): StudyMode {
 
   const panel = createStudyPanel(
     studyEl,
-    { features, store },
+    { features, landingSites, store },
     {
       onShowFront(card: SessionCard) {
         if (card.direction === "locate") {
           // Highlight + fly to the target; its name stays hidden (labels suppressed).
           layer.revealLabel(null);
-          layer.select(card.feature.id, { fly: true });
+          layer.select(itemId(card.item), { fly: true });
         } else {
           // Name shown in the panel; don't betray the location.
           layer.select(null);
@@ -61,10 +64,10 @@ export function createStudyMode(deps: StudyModeDeps): StudyMode {
       },
       onReveal(card: SessionCard) {
         if (card.direction === "locate") {
-          layer.revealLabel(card.feature.id);
+          layer.revealLabel(itemId(card.item));
         } else {
-          layer.select(card.feature.id, { fly: true });
-          layer.revealLabel(card.feature.id);
+          layer.select(itemId(card.item), { fly: true });
+          layer.revealLabel(itemId(card.item));
         }
       },
       onSessionEnd() {
@@ -83,10 +86,16 @@ export function createStudyMode(deps: StudyModeDeps): StudyMode {
       appEl.classList.add("study");
       studyEl.hidden = false;
       layer.setLabelsHidden(true);
+      // Rover-scale dots would clutter (and could mis-pick) around a highlighted
+      // target; stray globe clicks must not restyle it either.
+      layer.setColloquialHidden(true);
+      layer.setPickEnabled(false);
       panel.showPicker();
     } else {
       panel.showPicker(); // reset panel state so its keyboard shortcuts go inert
       layer.setLabelsHidden(false);
+      layer.setColloquialHidden(false);
+      layer.setPickEnabled(true);
       layer.select(null);
       appEl.classList.remove("study");
       studyEl.hidden = true;

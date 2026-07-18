@@ -3,10 +3,21 @@ import "./style.css";
 import * as Cesium from "cesium";
 import { createViewer, MARS } from "./globe/mars";
 import { addPoleMarkers } from "./globe/poles";
-import { createFeatureLayer } from "./globe/features";
-import { createList } from "./explore/list";
-import { renderRecord, clearRecord } from "./explore/record";
+import { createFeatureLayer, selectionId } from "./globe/features";
+import { buildCatalogueRows, createList } from "./explore/list";
+import {
+  renderRecord,
+  renderLandingRecord,
+  renderColloquialRecord,
+  clearRecord,
+} from "./explore/record";
 import { loadFeatures } from "./data/load";
+import {
+  EMPTY_SUPPLEMENTARY,
+  applyAliases,
+  loadSupplementary,
+  nearbyBySite,
+} from "./data/supplementary";
 import { loadMeta, formatDate } from "./lib/meta";
 import { createStore } from "./study/store";
 import { createStudyMode } from "./study/mode";
@@ -48,7 +59,16 @@ async function boot(): Promise<void> {
   const catalogueEl = $("catalogue");
   const store = createStore();
 
-  const [features, meta] = await Promise.all([loadFeatures(), loadMeta().catch(() => null)]);
+  const [features, meta, supp] = await Promise.all([
+    loadFeatures(),
+    loadMeta().catch(() => null),
+    // Degrade gracefully to the official catalogue if the supplementary data
+    // is missing or broken.
+    loadSupplementary().catch(() => EMPTY_SUPPLEMENTARY),
+  ]);
+  applyAliases(features, supp.aliases);
+  const nearby = nearbyBySite(supp.colloquial);
+  const siteById = new Map(supp.landingSites.map((s) => [s.id, s]));
 
   if (meta) {
     syncEl.textContent =
@@ -66,24 +86,45 @@ async function boot(): Promise<void> {
   const HOME_ORIENTATION = { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 };
   viewer.camera.setView({ destination: HOME_DESTINATION, orientation: HOME_ORIENTATION });
 
-  const list = createList(filtersEl, listEl, features, {
-    onPick: (id) => {
-      layer.select(id, { fly: true });
-      appEl.classList.remove("list-open"); // close the drawer after a pick (phones)
+  const list = createList(
+    filtersEl,
+    listEl,
+    buildCatalogueRows(features, supp.landingSites, supp.colloquial),
+    {
+      onPick: (id) => {
+        layer.select(id, { fly: true });
+        appEl.classList.remove("list-open"); // close the drawer after a pick (phones)
+      },
     },
-  });
+  );
 
   let study: StudyMode | null = null;
-  const layer = createFeatureLayer(viewer, features, (f) => {
-    if (study?.isActive()) return; // in Study mode the panel owns the globe + UI
-    if (f) {
-      renderRecord(recordEl, f, (id) => layer.flyTo(id));
-      list.highlight(f.id);
-    } else {
-      clearRecord(recordEl);
-      list.highlight(null);
-    }
-  });
+  const layer = createFeatureLayer(
+    viewer,
+    { features, landingSites: supp.landingSites, colloquial: supp.colloquial },
+    (sel) => {
+      if (study?.isActive()) return; // in Study mode the panel owns the globe + UI
+      if (!sel) {
+        clearRecord(recordEl);
+        list.highlight(null);
+        return;
+      }
+      const onFlyTo = (id: number) => layer.flyTo(id);
+      const pick = (id: number) => layer.select(id, { fly: true });
+      if (sel.kind === "feature") {
+        renderRecord(recordEl, sel.f, onFlyTo);
+      } else if (sel.kind === "landing") {
+        renderLandingRecord(recordEl, sel.s, nearby.get(sel.s.id) ?? [], {
+          onFlyTo,
+          onPickNearby: pick,
+        });
+      } else {
+        const host = sel.c.hostLandingId != null ? siteById.get(sel.c.hostLandingId) ?? null : null;
+        renderColloquialRecord(recordEl, sel.c, host, { onFlyTo, onPickHost: pick });
+      }
+      list.highlight(selectionId(sel));
+    },
+  );
 
   recordEl.addEventListener("click", (e) => {
     const t = e.target as HTMLElement;
@@ -191,6 +232,7 @@ async function boot(): Promise<void> {
     viewer,
     layer,
     features,
+    landingSites: supp.landingSites,
     store,
     appEl,
     studyEl,
