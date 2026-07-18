@@ -4,16 +4,28 @@
 // ready-made Session.
 
 import type { MarsFeature } from "../data/types";
+import type { LandingSite } from "../data/supplementary";
 import type { Store } from "./store";
 import { isDue, todayISO } from "./sm2";
 
 /** locate = globe shows an unlabeled feature, name it. name = given the name, locate it. */
 export type Direction = "locate" | "name";
 
-export type Scope = { kind: "all" } | { kind: "quad"; quad: string };
+export type Scope = { kind: "all" } | { kind: "quad"; quad: string } | { kind: "landing" };
+
+/** What a flashcard can be about: an official feature or a probe landing site.
+ * (Colloquial features stay out — their ids are build-local and must never be
+ * persisted by the store.) */
+export type StudyItem =
+  | { kind: "feature"; feature: MarsFeature }
+  | { kind: "landing"; site: LandingSite };
+
+export function itemId(item: StudyItem): number {
+  return item.kind === "feature" ? item.feature.id : item.site.id;
+}
 
 export interface SessionCard {
-  feature: MarsFeature;
+  item: StudyItem;
   direction: Direction;
   isNew: boolean;
 }
@@ -43,8 +55,15 @@ export function availableQuads(features: MarsFeature[]): string[] {
   return [...set].sort((a, b) => quadNum(a) - quadNum(b));
 }
 
-function inScope(f: MarsFeature, scope: Scope): boolean {
-  return scope.kind === "all" || f.quad.trim().toLowerCase() === scope.quad;
+function inScope(item: StudyItem, scope: Scope): boolean {
+  switch (scope.kind) {
+    case "all":
+      return item.kind === "feature";
+    case "quad":
+      return item.kind === "feature" && item.feature.quad.trim().toLowerCase() === scope.quad;
+    case "landing":
+      return item.kind === "landing";
+  }
 }
 
 function dayEpoch(today: string): number {
@@ -82,40 +101,43 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
 }
 
 export function buildSession(
-  features: MarsFeature[],
+  items: StudyItem[],
   store: Store,
   scope: Scope,
   today: string = todayISO(),
 ): Session {
   const epoch = dayEpoch(today);
 
-  const due: { f: MarsFeature; dueISO: string }[] = [];
-  const fresh: MarsFeature[] = [];
-  const future: { f: MarsFeature; dueISO: string }[] = [];
+  const due: { item: StudyItem; dueISO: string }[] = [];
+  const fresh: StudyItem[] = [];
+  const future: { item: StudyItem; dueISO: string }[] = [];
 
-  for (const f of features) {
-    if (!inScope(f, scope)) continue;
-    const state = store.get(f.id);
-    if (!state) fresh.push(f);
-    else if (isDue(state, today)) due.push({ f, dueISO: state.dueISO });
-    else future.push({ f, dueISO: state.dueISO });
+  for (const item of items) {
+    if (!inScope(item, scope)) continue;
+    const state = store.get(itemId(item));
+    if (!state) fresh.push(item);
+    else if (isDue(state, today)) due.push({ item, dueISO: state.dueISO });
+    else future.push({ item, dueISO: state.dueISO });
   }
 
-  due.sort((a, b) => (a.dueISO < b.dueISO ? -1 : a.dueISO > b.dueISO ? 1 : a.f.id - b.f.id));
+  due.sort((a, b) =>
+    a.dueISO < b.dueISO ? -1 : a.dueISO > b.dueISO ? 1 : itemId(a.item) - itemId(b.item),
+  );
 
-  const dueCards = due.slice(0, SESSION_SIZE).map(({ f }) => f);
+  const dueCards = due.slice(0, SESSION_SIZE).map(({ item }) => item);
   const slotsLeft = SESSION_SIZE - dueCards.length;
-  const seed = epoch ^ strHash(scope.kind === "quad" ? scope.quad : "all");
+  // "all" hashes to the same seed as before; "landing" gets its own stream.
+  const seed = epoch ^ strHash(scope.kind === "quad" ? scope.quad : scope.kind);
   const newCards =
     slotsLeft > 0
       ? shuffle(fresh, mulberry32(seed)).slice(0, Math.min(NEW_PER_SESSION, slotsLeft))
       : [];
 
-  const newIds = new Set(newCards.map((f) => f.id));
-  const cards: SessionCard[] = [...dueCards, ...newCards].map((f) => ({
-    feature: f,
-    direction: (f.id + epoch) % 2 === 0 ? "locate" : "name",
-    isNew: newIds.has(f.id),
+  const newIds = new Set(newCards.map(itemId));
+  const cards: SessionCard[] = [...dueCards, ...newCards].map((item) => ({
+    item,
+    direction: (itemId(item) + epoch) % 2 === 0 ? "locate" : "name",
+    isNew: newIds.has(itemId(item)),
   }));
 
   let nextDueISO: string | null = null;

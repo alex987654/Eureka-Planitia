@@ -1,5 +1,61 @@
 import type { MarsFeature } from "../data/types";
 import { descriptorKey } from "../data/types";
+import type { ColloquialFeature, LandingSite } from "../data/supplementary";
+
+// One row model for everything the catalogue can show: official features,
+// landing sites, and informal (colloquial) features. Built once at boot.
+export interface CatalogueRow {
+  id: number;
+  name: string;
+  clsKey: string; // descriptor class | "landing" | "informal"
+  meta: string; // small second line
+  searchText: string; // lowercase haystack; official features include their aliases
+  sizeKm: number | null; // size-sort key
+}
+
+export function buildCatalogueRows(
+  features: MarsFeature[],
+  sites: LandingSite[],
+  colloquial: ColloquialFeature[],
+): CatalogueRow[] {
+  const rows: CatalogueRow[] = [];
+  for (const f of features) {
+    const cls = descriptorKey(f.type);
+    const aka = (f.aka ?? []).map((a) => a.alias);
+    rows.push({
+      id: f.id,
+      name: f.name,
+      clsKey: cls,
+      meta:
+        cls +
+        (f.diameterKm ? ` · ${Math.round(f.diameterKm)} km` : "") +
+        (aka.length ? ` · “${aka.join("”, “")}”` : ""),
+      searchText: [f.name, ...aka].join(" ").toLowerCase(),
+      sizeKm: f.diameterKm,
+    });
+  }
+  for (const s of sites) {
+    rows.push({
+      id: s.id,
+      name: s.name,
+      clsKey: "landing",
+      meta: `landing site · ${s.landingDate.slice(0, 4)}`,
+      searchText: `${s.name} ${s.mission} ${s.craft} ${s.memorialName}`.toLowerCase(),
+      sizeKm: null,
+    });
+  }
+  for (const c of colloquial) {
+    rows.push({
+      id: c.id,
+      name: c.name,
+      clsKey: "informal",
+      meta: `${c.classShort} · informal`,
+      searchText: `${c.name} ${c.region}`.toLowerCase(),
+      sizeKm: c.sizeKm,
+    });
+  }
+  return rows;
+}
 
 interface ListOpts {
   onPick: (id: number) => void;
@@ -13,12 +69,16 @@ export interface ListApi {
 export function createList(
   filtersEl: HTMLElement,
   listEl: HTMLElement,
-  features: MarsFeature[],
+  rows: CatalogueRow[],
   opts: ListOpts,
 ): ListApi {
-  const classes = Array.from(new Set(features.map((f) => descriptorKey(f.type))))
+  const classes = Array.from(
+    new Set(rows.filter((r) => r.clsKey !== "landing" && r.clsKey !== "informal").map((r) => r.clsKey)),
+  )
     .filter(Boolean)
     .sort();
+  const hasLanding = rows.some((r) => r.clsKey === "landing");
+  const hasInformal = rows.some((r) => r.clsKey === "informal");
 
   let query = "";
   let cls = "all";
@@ -29,10 +89,12 @@ export function createList(
     <label class="field">
       <span>Class</span>
       <select id="f-class">
-        <option value="all">All classes (${features.length})</option>
+        <option value="all">All classes (${rows.length})</option>
         ${classes
           .map((c) => `<option value="${c}">${c[0].toUpperCase()}${c.slice(1)}</option>`)
           .join("")}
+        ${hasLanding ? `<option value="landing">Landing sites</option>` : ""}
+        ${hasInformal ? `<option value="informal">Informal names</option>` : ""}
       </select>
     </label>
     <label class="field">
@@ -51,32 +113,31 @@ export function createList(
   classSel.addEventListener("change", () => { cls = classSel.value; render(); });
   sortSel.addEventListener("change", () => { sort = sortSel.value as "name" | "size"; render(); });
 
-  function matches(f: MarsFeature): boolean {
-    if (cls !== "all" && descriptorKey(f.type) !== cls) return false;
-    if (query && !f.name.toLowerCase().includes(query)) return false;
+  function matches(r: CatalogueRow): boolean {
+    if (cls !== "all" && r.clsKey !== cls) return false;
+    if (query && !r.searchText.includes(query)) return false;
     return true;
   }
 
   function render(): void {
-    const rows = features.filter(matches).sort((a, b) =>
+    const shown = rows.filter(matches).sort((a, b) =>
       sort === "name"
         ? a.name.localeCompare(b.name)
-        : (b.diameterKm ?? 0) - (a.diameterKm ?? 0),
+        : (b.sizeKm ?? 0) - (a.sizeKm ?? 0),
     );
-    countEl.textContent = `${rows.length} feature${rows.length === 1 ? "" : "s"}`;
+    countEl.textContent = `${shown.length} feature${shown.length === 1 ? "" : "s"}`;
 
     const frag = document.createDocumentFragment();
-    for (const f of rows) {
+    for (const r of shown) {
       const row = document.createElement("button");
-      row.className = "row" + (f.id === activeId ? " is-active" : "");
+      row.className = "row" + (r.id === activeId ? " is-active" : "");
       row.type = "button";
-      row.dataset.id = String(f.id);
+      row.dataset.id = String(r.id);
       row.setAttribute("role", "option");
       row.innerHTML =
-        `<span class="row__name">${f.name}</span>` +
-        `<span class="row__meta">${descriptorKey(f.type)}` +
-        `${f.diameterKm ? ` · ${Math.round(f.diameterKm)} km` : ""}</span>`;
-      row.addEventListener("click", () => opts.onPick(f.id));
+        `<span class="row__name">${r.name}</span>` +
+        `<span class="row__meta">${r.meta}</span>`;
+      row.addEventListener("click", () => opts.onPick(r.id));
       frag.appendChild(row);
     }
     listEl.replaceChildren(frag);
