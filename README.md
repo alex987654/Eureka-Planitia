@@ -3,6 +3,8 @@
 An educational study atlas of every officially named surface feature on Mars — its IAU name,
 descriptor class, and location — for anyone who wants to learn about named features on Mars. Built with a CesiumJS 3D globe (colorized-MOLA imagery) and an SM-2 flashcard study layer.
 
+Updated to include colloquial names of features (e.g. Mt. Sharp) and locations of historical landing sites as well.
+
 Web page:
 
 * [Eureka Planitia](https://alex987654.github.io/Eureka-Planitia)

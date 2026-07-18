@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3 -)"
+      "Bash(python3 -)",
+      "Bash(python3 scripts/build_supplementary.py)",
+      "Bash(python3 scripts/build_supplementary.py --check)"
     ]
   }
 }
